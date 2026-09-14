@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Local Autofill</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; }
+    body { width: 360px; margin: 0; padding: 18px; color: #1f2937; background: #f8fafc; }
+    h1 { margin: 0 0 4px; font-size: 21px; }
+    .subtitle { margin: 0 0 16px; color: #64748b; font-size: 13px; }
+    .actions { display: flex; gap: 8px; margin-bottom: 10px; }
+    [hidden] { display: none !important; }
+    button { flex: 1; border: 1px solid #cbd5e1; border-radius: 7px; padding: 9px 10px; cursor: pointer; background: white; color: #1e293b; font-weight: 600; }
+    button.primary { border-color: #2563eb; background: #2563eb; color: white; }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    #status { min-height: 18px; margin: 8px 0 12px; color: #475569; font-size: 13px; }
+    #preview-list { display: grid; gap: 8px; max-height: 330px; overflow-y: auto; }
+    .match { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 10px; border: 1px solid #dbe3ed; border-radius: 8px; background: white; }
+    .match input { margin-top: 3px; }
+    .match-label, .match-value, .match-meta { display: block; }
+    .match-label { font-weight: 700; }
+    .match-value { margin-top: 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .match-meta { margin-top: 5px; color: #64748b; font-size: 11px; }
+    .warning { color: #9a3412; }
+    details { margin-top: 14px; color: #475569; font-size: 12px; }
+    details button { margin-top: 8px; }
+    pre { max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #eef2f7; padding: 8px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Local Autofill</h1>
+  <p class="subtitle">Preview every change before filling.</p>
+  <p><a href="http://localhost:8000/profile-editor" target="_blank">Edit local profile</a></p>
+  <div class="actions">
+    <button id="check-server">Check server</button>
+    <button id="preview-profile" class="primary">Preview matches</button>
+  </div>
+  <p id="status" role="status">Open the local practice form to begin.</p>
+  <div id="preview-list" aria-label="Proposed field matches"></div>
+  <div class="actions" id="approval-actions" hidden>
+    <button id="cancel-preview">Cancel</button>
+    <button id="fill-approved" class="primary">Fill selected</button>
+  </div>
+  <details>
+    <summary>Developer field inspection</summary>
+    <button id="inspect-fields">Inspect fields</button>
+    <pre id="field-results"></pre>
+  </details>
+  <script src="popup.js"></script>
+</body>
+</html>

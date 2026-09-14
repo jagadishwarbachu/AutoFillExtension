@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Autofill Matcher Test</title>
+</head>
+<body>
+  <h1>Autofill Matcher Test</h1>
+  <form>
+    <label>First Name <input name="legalName--firstName"></label>
+    <label>Last Name <input name="legalName--lastName"></label>
+    <label>Phone number <input name="contact_number" autocomplete="off"></label>
+    <label for="summary">Short introduction</label>
+    <textarea id="summary" name="applicant_summary"></textarea>
+    <label>Preferred work arrangement
+      <select name="preferred_work_location">
+        <option value="">Choose</option>
+        <option value="remote">Remote</option>
+        <option value="hybrid">Hybrid</option>
+        <option value="onsite">On-site</option>
+      </select>
+    </label>
+    <input name="personal_site" aria-label="Portfolio website">
+    <button id="country-picker" type="button" aria-haspopup="listbox" aria-label="Country">Select One</button>
+    <fieldset>
+      <legend>Are you legally authorized to work?</legend>
+      <label><input type="radio" name="work_authorization" value="yes"> Yes</label>
+      <label><input type="radio" name="work_authorization" value="no"> No</label>
+    </fieldset>
+  </form>
+  <p id="result">Running…</p>
+  <script>
+    window.chrome = {
+      runtime: {
+        onMessage: {
+          addListener(listener) {
+            window.autofillMessageListener = listener;
+          }
+        }
+      }
+    };
+  </script>
+  <script src="/content-script-test.js"></script>
+  <script>
+    function sendMessage(message) {
+      return new Promise((resolve) => window.autofillMessageListener(message, {}, resolve));
+    }
+
+    document.getElementById("country-picker").addEventListener("click", () => {
+      document.getElementById("test-country-options")?.remove();
+      const listbox = document.createElement("div");
+      listbox.id = "test-country-options";
+      listbox.setAttribute("role", "listbox");
+      for (const country of ["Canada", "United States of America"]) {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.setAttribute("role", "option");
+        option.textContent = country;
+        option.addEventListener("click", (event) => {
+          event.stopPropagation();
+          document.getElementById("country-picker").textContent = country;
+          listbox.remove();
+        });
+        listbox.append(option);
+      }
+      document.body.append(listbox);
+    });
+
+    async function runTest() {
+      const testProfile = {
+        full_name: "Alex Taylor",
+        phone: "555-0100",
+        bio: "Local fictional profile.",
+        work_mode: "On-site",
+        portfolio: "https://example.com",
+        country: "United States",
+        authorized_to_work: "Yes"
+      };
+      const preview = await sendMessage({ type: "PREVIEW_PROFILE", profile: testProfile });
+      const fill = await sendMessage({
+          type: "FILL_APPROVED",
+          profile: testProfile,
+          approvedMatches: preview.matches.map(({ fieldId, profileKey }) => ({ fieldId, profileKey }))
+      });
+
+      const passed = preview.matches.length === 8
+        && fill.filledCount === 8
+        && document.querySelector('[name="legalName--firstName"]').value === "Alex"
+        && document.querySelector('[name="legalName--lastName"]').value === "Taylor"
+        && document.querySelector('[name="contact_number"]').value === "555-0100"
+        && document.querySelector('[name="preferred_work_location"]').value === "onsite"
+        && document.getElementById("country-picker").textContent === "United States of America"
+        && document.querySelector('[name="work_authorization"][value="yes"]').checked;
+      document.getElementById("result").textContent = passed
+        ? "PASS: previewed and filled 8 fictional fields, including split names and a custom listbox."
+        : `FAIL: previewed ${preview.matches.length}, filled ${fill.filledCount}.`;
+    }
+
+    window.addEventListener("load", () => setTimeout(runTest, 100));
+  </script>
+</body>
+</html>

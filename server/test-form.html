@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Autofill Practice Form</title>
+</head>
+<body>
+  <h1>Autofill Practice Form</h1>
+  <p>Local testing only. Leave the fields empty.</p>
+
+  <form>
+    <p>
+      <label for="full-name">Full name</label>
+      <input id="full-name" name="full_name" type="text"
+             placeholder="Example: Alex Taylor">
+    </p>
+
+    <p>
+      <label for="email">Email address</label>
+      <input id="email" name="email" type="email">
+    </p>
+
+    <p>
+      <label for="bio">Short introduction</label>
+      <textarea id="bio" name="applicant_summary"
+                aria-describedby="bio-help"></textarea>
+      <small id="bio-help">A few sentences about yourself.</small>
+    </p>
+
+    <p>
+      <label for="work-mode">Preferred work arrangement</label>
+      <select id="work-mode" name="work_mode">
+        <option value="">Choose an option</option>
+        <option value="remote">Remote</option>
+        <option value="hybrid">Hybrid</option>
+        <option value="onsite">On-site</option>
+      </select>
+    </p>
+
+    <p>
+      <input name="personal_site" type="url"
+             aria-label="Portfolio website"
+             placeholder="https://example.com">
+    </p>
+  </form>
+</body>
+</html>
