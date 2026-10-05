@@ -1,14 +1,31 @@
 import json
+from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from typing import Any
 
 from fastapi import Body, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 
 app = FastAPI()
 
 BASE_DIR = Path(__file__).parent
+PROJECT_DIR = BASE_DIR.parent
 PROFILE_PATH = BASE_DIR / "profile.json"
+CONTACTS_PATH = PROJECT_DIR / "jobright_contacts.xlsx"
+CONTACTS_LOCK = Lock()
+CONTACT_HEADERS = [
+    "Name",
+    "Email",
+    "Contact title",
+    "Company",
+    "Job title",
+    "Job URL",
+    "Source",
+    "Captured at",
+]
 
 PROFILE_FIELDS = [
     {"key": "full_name", "label": "Full legal name", "section": "Contact", "type": "text"},
@@ -76,6 +93,93 @@ def read_profile() -> dict[str, Any]:
     return data
 
 
+def safe_excel_text(value: Any, max_length: int = 500) -> str:
+    text = str(value or "").strip()[:max_length]
+    if text.startswith(("=", "+", "-", "@")):
+        return f"'{text}"
+    return text
+
+
+def normalized_contact(raw: dict[str, Any]) -> dict[str, Any] | None:
+    email = safe_excel_text(raw.get("email"), 254).lower()
+    if not email or "@" not in email or any(character.isspace() for character in email):
+        return None
+    return {
+        "Name": safe_excel_text(raw.get("name"), 120),
+        "Email": email,
+        "Contact title": safe_excel_text(raw.get("title"), 180),
+        "Company": safe_excel_text(raw.get("company"), 160),
+        "Job title": safe_excel_text(raw.get("jobTitle"), 180),
+        "Job URL": safe_excel_text(raw.get("jobUrl"), 500),
+        "Source": safe_excel_text(raw.get("source") or "JobRight", 80),
+        "Captured at": datetime.now().astimezone().replace(tzinfo=None),
+    }
+
+
+def open_contacts_workbook():
+    if CONTACTS_PATH.exists():
+        workbook = load_workbook(CONTACTS_PATH)
+        worksheet = workbook["Contacts"] if "Contacts" in workbook.sheetnames else workbook.active
+        return workbook, worksheet
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Contacts"
+    worksheet.append(CONTACT_HEADERS)
+    worksheet.freeze_panes = "A2"
+    worksheet.auto_filter.ref = "A1:H1"
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    for cell in worksheet[1]:
+        cell.font = Font(color="FFFFFF", bold=True)
+        cell.fill = header_fill
+        cell.alignment = Alignment(vertical="center")
+    widths = {"A": 24, "B": 34, "C": 30, "D": 22, "E": 30, "F": 58, "G": 14, "H": 22}
+    for column, width in widths.items():
+        worksheet.column_dimensions[column].width = width
+    return workbook, worksheet
+
+
+def save_contacts(records: list[dict[str, Any]]) -> dict[str, Any]:
+    contacts = [contact for raw in records if (contact := normalized_contact(raw))]
+    if not contacts:
+        raise HTTPException(status_code=400, detail="No valid email contacts supplied")
+
+    with CONTACTS_LOCK:
+        workbook, worksheet = open_contacts_workbook()
+        email_rows = {
+            str(worksheet.cell(row=row, column=2).value or "").strip().lower(): row
+            for row in range(2, worksheet.max_row + 1)
+        }
+        added = 0
+        updated = 0
+        for contact in contacts:
+            row_number = email_rows.get(contact["Email"])
+            if row_number:
+                for column, header in enumerate(CONTACT_HEADERS, start=1):
+                    if header == "Captured at" or contact[header]:
+                        worksheet.cell(row=row_number, column=column, value=contact[header])
+                updated += 1
+            else:
+                worksheet.append([contact[header] for header in CONTACT_HEADERS])
+                email_rows[contact["Email"]] = worksheet.max_row
+                added += 1
+
+        worksheet.auto_filter.ref = f"A1:H{worksheet.max_row}"
+        for cell in worksheet["H"][1:]:
+            cell.number_format = "mm/dd/yy h:mm AM/PM"
+        temporary_path = PROJECT_DIR / ".jobright_contacts.tmp.xlsx"
+        workbook.save(temporary_path)
+        temporary_path.replace(CONTACTS_PATH)
+
+    return {
+        "status": "saved",
+        "added": added,
+        "updated": updated,
+        "total": len(email_rows),
+        "path": str(CONTACTS_PATH),
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -89,6 +193,13 @@ def profile():
 @app.get("/profile-schema")
 def profile_schema():
     return PROFILE_FIELDS
+
+
+@app.post("/outreach-contacts")
+def update_outreach_contacts(records: list[dict[str, Any]] = Body(...)):
+    if len(records) > 100:
+        raise HTTPException(status_code=400, detail="At most 100 contacts can be saved at once")
+    return save_contacts(records)
 
 
 @app.put("/profile")
@@ -137,5 +248,13 @@ def matcher_test():
 def content_script_test():
     return FileResponse(
         BASE_DIR.parent / "extension" / "content.js",
+        media_type="application/javascript",
+    )
+
+
+@app.get("/job-board-adapters-test.js")
+def job_board_adapters_test():
+    return FileResponse(
+        BASE_DIR.parent / "extension" / "job-board-adapters.js",
         media_type="application/javascript",
     )

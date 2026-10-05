@@ -5,13 +5,15 @@
   <title>Local Autofill</title>
   <style>
     :root { color-scheme: light; font-family: Arial, sans-serif; }
-    body { width: 360px; margin: 0; padding: 18px; color: #1f2937; background: #f8fafc; }
+    body { width: 400px; margin: 0; padding: 18px; color: #1f2937; background: #f8fafc; }
     h1 { margin: 0 0 4px; font-size: 21px; }
+    h2 { margin: 0 0 4px; font-size: 17px; }
     .subtitle { margin: 0 0 16px; color: #64748b; font-size: 13px; }
     .actions { display: flex; gap: 8px; margin-bottom: 10px; }
     [hidden] { display: none !important; }
     button { flex: 1; border: 1px solid #cbd5e1; border-radius: 7px; padding: 9px 10px; cursor: pointer; background: white; color: #1e293b; font-weight: 600; }
     button.primary { border-color: #2563eb; background: #2563eb; color: white; }
+    .wide-action { box-sizing: border-box; width: 100%; margin-bottom: 2px; }
     button:disabled { cursor: not-allowed; opacity: 0.5; }
     #status { min-height: 18px; margin: 8px 0 12px; color: #475569; font-size: 13px; }
     #preview-list { display: grid; gap: 8px; max-height: 330px; overflow-y: auto; }
@@ -22,6 +24,22 @@
     .match-value { margin-top: 4px; overflow-wrap: anywhere; white-space: pre-wrap; }
     .match-meta { margin-top: 5px; color: #64748b; font-size: 11px; }
     .warning { color: #9a3412; }
+    .success { color: #166534; }
+    .panel { margin-top: 18px; padding-top: 16px; border-top: 1px solid #cbd5e1; }
+    .field { display: grid; gap: 5px; margin: 10px 0; font-size: 12px; font-weight: 700; }
+    .field input, .field textarea { box-sizing: border-box; width: 100%; border: 1px solid #cbd5e1; border-radius: 7px; padding: 8px; font: inherit; font-weight: 400; color: #1f2937; background: white; }
+    .field textarea { min-height: 130px; resize: vertical; line-height: 1.4; }
+    .helper { margin: 5px 0 10px; color: #64748b; font-size: 11px; line-height: 1.4; }
+    .contact { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 9px; border: 1px solid #dbe3ed; border-radius: 8px; background: white; }
+    .contact + .contact { margin-top: 6px; }
+    .contact-email { display: block; overflow-wrap: anywhere; font-weight: 700; }
+    .contact-name { display: block; margin-top: 3px; color: #64748b; font-size: 11px; }
+    .manual-email { box-sizing: border-box; width: 100%; margin-top: 7px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px; font-size: 12px; color: #1f2937; background: white; }
+    .manual-email.invalid { border-color: #dc2626; background: #fef2f2; }
+    #outreach-status { min-height: 18px; margin: 8px 0; color: #475569; font-size: 13px; }
+    #contact-list { max-height: 185px; overflow-y: auto; }
+    #resume-name { font-weight: 400; }
+    .oauth-note { padding: 8px; border-radius: 7px; background: #fff7ed; color: #9a3412; }
     details { margin-top: 14px; color: #475569; font-size: 12px; }
     details button { margin-top: 8px; }
     pre { max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #eef2f7; padding: 8px; border-radius: 6px; }
@@ -41,11 +59,62 @@
     <button id="cancel-preview">Cancel</button>
     <button id="fill-approved" class="primary">Fill selected</button>
   </div>
+
+  <section class="panel" aria-labelledby="outreach-heading">
+    <h2 id="outreach-heading">Referral outreach</h2>
+    <p class="subtitle">Find visible contacts and create individual Gmail drafts for review.</p>
+    <div class="actions">
+      <button id="connect-gmail">Connect Gmail</button>
+      <button id="scan-contacts" class="primary">Find contacts</button>
+    </div>
+    <button id="passive-capture" class="wide-action">Start passive email capture</button>
+    <p class="helper">Start this on the current page, then manually open permitted contact details. Visible email addresses are saved locally to Excel. The extension never clicks website controls.</p>
+    <p id="oauth-note" class="helper oauth-note" hidden></p>
+    <p id="outreach-status" role="status">Reveal the contacts on the job page, then choose Find contacts.</p>
+    <div id="contact-list" aria-label="Detected email contacts"></div>
+
+    <div id="outreach-editor" hidden>
+      <label class="field">Job title
+        <input id="job-title" type="text" autocomplete="off">
+      </label>
+      <label class="field">Company
+        <input id="company-name" type="text" autocomplete="off">
+      </label>
+      <label class="field">Subject template
+        <input id="outreach-subject" type="text" value="Referral request for {job_title} at {company}">
+      </label>
+      <label class="field">Message template
+        <textarea id="outreach-body">Hi {first_name},
+
+I came across the {job_title} opportunity at {company} and noticed your connection to the organization. I am very interested in the role, and my background appears to align well with the position.
+
+Would you be open to sharing any insight about the team or referring me for the role? I have attached my resume for context. I completely understand if you are unable to do so.
+
+Thank you for your time,
+{sender_name}</textarea>
+      </label>
+      <p class="helper">Available placeholders: {first_name}, {job_title}, {company}, {sender_name}. Each selected contact gets a separate draft.</p>
+      <label class="field">Résumé attachment
+        <input id="resume-file" type="file" accept="application/pdf,.pdf,.doc,.docx">
+      </label>
+      <p id="resume-name" class="helper">No résumé selected. The file stays local until you create drafts.</p>
+      <div class="actions">
+        <button id="preview-outreach">Preview first</button>
+        <button id="create-drafts" class="primary">Create Gmail drafts</button>
+      </div>
+      <details id="outreach-preview" hidden>
+        <summary>First selected draft preview</summary>
+        <pre id="outreach-preview-text"></pre>
+      </details>
+    </div>
+  </section>
+
   <details>
     <summary>Developer field inspection</summary>
     <button id="inspect-fields">Inspect fields</button>
     <pre id="field-results"></pre>
   </details>
+  <script src="outreach-utils.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
