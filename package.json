@@ -1,0 +1,14 @@
+{
+  "name": "local-autofill",
+  "version": "0.8.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "test": "node --test extension/*.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "27.0.0"
+  }
+}

@@ -40,6 +40,7 @@
       }
     };
   </script>
+  <script src="/job-board-adapters-test.js"></script>
   <script src="/content-script-test.js"></script>
   <script>
     function sendMessage(message) {
@@ -80,7 +81,9 @@
       const fill = await sendMessage({
           type: "FILL_APPROVED",
           profile: testProfile,
-          approvedMatches: preview.matches.map(({ fieldId, profileKey }) => ({ fieldId, profileKey }))
+          approvedMatches: preview.matches.map(({ fieldId, profileKey, fingerprint, value }) => ({
+            fieldId, profileKey, fingerprint, value
+          }))
       });
 
       const passed = preview.matches.length === 8

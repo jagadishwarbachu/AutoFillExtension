@@ -1,15 +1,27 @@
 {
   "manifest_version": 3,
   "name": "Local Autofill",
-  "version": "0.4.0",
-  "description": "Preview and approve local profile data before filling forms.",
+  "version": "0.8.0",
+  "description": "Preview and approve local profile data before filling forms, then prepare reviewed Gmail referral drafts.",
   "permissions": [
     "activeTab",
+    "identity",
+    "storage",
     "scripting"
   ],
   "host_permissions": [
-    "http://localhost:8000/*"
+    "http://localhost:8000/*",
+    "https://gmail.googleapis.com/*"
   ],
+  "oauth2": {
+    "client_id": "787331138998-glf0rh8cjv0i9jb2pa4gu312btv9ndkv.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.compose"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
     "default_popup": "popup.html"
   }
